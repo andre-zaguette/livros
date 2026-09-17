@@ -5,6 +5,11 @@ services:
       - "3000:3000"
     env_file:
       - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      MEDIA_ROOT: /app/media
+    volumes:
+      - livros_media:/app/media
     depends_on:
       db:
         condition: service_healthy
@@ -16,7 +21,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - livros_db_data:/var/lib/postgresql/data
     healthcheck:
@@ -27,3 +32,4 @@ services:
 
 volumes:
   livros_db_data:
+  livros_media:
