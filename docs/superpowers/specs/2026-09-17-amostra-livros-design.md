@@ -7,7 +7,8 @@ Data: 2026-09-17
 Plataforma web onde o autor publica amostras gratuitas de livros (capítulos de
 degustação), visitantes leem a amostra online sem poder baixá-la, e quem
 quiser saber mais deixa nome/e-mail para ser avisado quando o livro for
-lançado.
+lançado, podendo opcionalmente deixar uma nota e um comentário sobre a
+amostra.
 
 ## Escopo
 
@@ -17,8 +18,10 @@ Inclui:
   amostra.
 - Conversão automática do PDF em páginas-imagem.
 - Leitor de amostra tipo "flipbook" no site público, sem opção de download.
-- Formulário de captura de lead (nome + e-mail) por livro.
-- Lista de leads por livro no admin, com exportação em CSV.
+- Formulário de captura de lead (nome + e-mail) por livro, com nota (1-5) e
+  comentário opcionais sobre a amostra.
+- Lista de leads por livro no admin, com nota/comentário quando houver, e
+  exportação em CSV.
 
 Não inclui (fora do MVP):
 
@@ -79,10 +82,15 @@ Nenhum serviço externo é necessário para rodar a plataforma.
 | book_id    | uuid fk     | referencia `books`                                     |
 | name       | text        | opcional                                               |
 | email      | text        | obrigatório, validado                                  |
+| rating     | smallint    | opcional, 1 a 5                                        |
+| comment    | text        | opcional                                               |
 | created_at | timestamptz |                                                         |
 
 Constraint: `unique (book_id, email)` — o mesmo e-mail não se cadastra duas
-vezes para o mesmo livro, mas pode se cadastrar em livros diferentes.
+vezes para o mesmo livro, mas pode se cadastrar em livros diferentes. Se a
+pessoa reenviar o formulário para o mesmo livro (ex.: para adicionar um
+comentário depois), o envio atualiza `rating`/`comment` do registro
+existente em vez de falhar.
 
 Sessão do admin não usa tabela: autenticação por senha única (variável de
 ambiente) + cookie de sessão assinado (ex.: `iron-session`).
@@ -121,23 +129,28 @@ ambiente) + cookie de sessão assinado (ex.: `iron-session`).
   em caso de sucesso, cookie de sessão assinado).
 - CRUD de livros (título, autor, sinopse, capa, status).
 - Upload de PDF de amostra por livro (ver fluxo de conversão acima).
-- Lista de leads por livro (nome, e-mail, data), com botão de exportação em
-  CSV.
+- Lista de leads por livro (nome, e-mail, nota, comentário, data), com
+  botão de exportação em CSV.
 
 ## Site público
 
 - Página inicial: grade de livros publicados, com capa, título e status.
 - Página de cada livro: sinopse, botão "Ler amostra" (quando disponível) e
-  formulário "Avise-me quando lançar" (nome opcional + e-mail obrigatório).
-- Envio do formulário grava um `lead`; se o e-mail já existe para aquele
-  livro, mostra mensagem "você já está na lista" em vez de erro.
+  formulário "Avise-me quando lançar" (nome opcional + e-mail obrigatório,
+  nota de 1-5 estrelas e comentário opcionais).
+- Envio do formulário grava/atualiza um `lead` (ver constraint acima); se
+  o e-mail já existia sem nota/comentário e a pessoa envia de novo com
+  esses campos preenchidos, eles são adicionados ao registro existente.
+  A mensagem de confirmação é sempre "obrigado", sem tratar reenvio como
+  erro.
 
 ## Testes
 
 - Testes de integração para as rotas de API mais fáceis de quebrar
   silenciosamente:
   - upload de PDF → geração correta de `book_pages` e `page_count`.
-  - submissão de lead: validação de e-mail, constraint de duplicidade.
+  - submissão de lead: validação de e-mail, upsert por `(book_id, email)`
+    incluindo o caso de reenvio adicionando nota/comentário depois.
 - Sem suíte E2E completa no MVP.
 
 ## Deploy
